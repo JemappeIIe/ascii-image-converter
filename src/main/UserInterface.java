@@ -37,7 +37,11 @@ public class UserInterface {
             try {
                 command = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println(e.getMessage());
+                System.out.println("(Error) Not a number");
+                continue;
+            }
+            if (!commandMap.containsKey(command)) {
+                System.out.println("(Error) No such command");
                 continue;
             }
             commandMap.get(command).run();
@@ -58,39 +62,37 @@ public class UserInterface {
     }
 
     public static void showASCII() {
-        String filename = readInput(GET_ASCII_FILENAME_MESSAGE);
-        File file = logic.readASCIIFile(filename);
+        File file = logic.readASCII(readInput(GET_ASCII_FILENAME_MESSAGE));
         try (Scanner scannerASCII = new Scanner(file)) {
             while (scannerASCII.hasNextLine()) {
                 System.out.println(scannerASCII.nextLine());
             }
         } catch (FileNotFoundException e) {
-            System.out.println(e.getMessage());
+            System.out.println("(Error) No such file");
         }
     }
 
     public static void convertToASCII() {
-        String imageFilename = readInput(GET_IMAGE_FILENAME_MESSAGE);
         BufferedImage image;
         try {
-            image = logic.readImageFile(imageFilename);
+            image = logic.readImage(readInput(GET_IMAGE_FILENAME_MESSAGE));
         } catch (IOException e) {
-            System.out.println(e.getMessage());
+            System.out.println("(Error) Could not read image");
             return;
         }
-        String ASCIIFilename = readInput(GET_ASCII_FILENAME_MESSAGE);
         try {
-            logic.writeASCII(image, ASCIIFilename);
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
+            logic.writeASCII(image, readInput(GET_ASCII_FILENAME_MESSAGE));
+        } catch (RuntimeException e) {
+            System.out.println("(Error) Could not write ASCII");
         }
     }
 
     public static void convertToImage() {
-        String ASCIIFilename = readInput(GET_ASCII_FILENAME_MESSAGE);
-        String imageFilename = readInput(GET_IMAGE_FILENAME_MESSAGE);
-        String imageFormat = readInput(GET_IMAGE_FORMAT_MESSAGE);
-        logic.writeImage(ASCIIFilename, imageFilename, imageFormat);
+        try {
+            logic.writeImage(readInput(GET_ASCII_FILENAME_MESSAGE), readInput(GET_IMAGE_FILENAME_MESSAGE));
+        } catch (RuntimeException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     public static void stop() {

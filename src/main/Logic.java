@@ -27,22 +27,18 @@ public class Logic {
         this.userInterface = userInterface;
     }
 
-    public File readASCIIFile(String filename) {
+    public File readASCII(String filename) {
         return new File(ASCII_PATH + filename);
     }
 
-    public BufferedImage readImageFile(String filename) throws IOException {
-        File file = new File(IMAGE_PATH + filename);
-        BufferedImage image = ImageIO.read(file);
-        if (image == null) {
-            throw new IOException("(Error) File format is not supported");
-        }
-        return image;
-    }
-
-    public void writeASCII(BufferedImage image, String outputFileName) throws IOException {
+    public void writeASCII(BufferedImage image, String outputFileName) {
         File file = new File(ASCII_PATH + outputFileName);
-        PrintWriter printWriter = new PrintWriter(new FileWriter(file));
+        PrintWriter printWriter;
+        try {
+            printWriter = new PrintWriter(new FileWriter(file));
+        } catch (IOException e) {
+            throw new RuntimeException("(Error) Could not read ASCII");
+        }
         for (int y = 0; y < image.getHeight(); ++y) {
             StringBuilder row = new StringBuilder();
             for (int x = 0; x < image.getWidth(); ++x) {
@@ -58,25 +54,23 @@ public class Logic {
         printWriter.close();
     }
 
-    public double colorToLuminance(int R, int G, int B) {
-        // https://stackoverflow.com/a/596243, Rec. 709
-        return (0.2126 * R + 0.7152 * G + 0.0722 * B);
+    public BufferedImage readImage(String filename) throws IOException {
+        File file = new File(IMAGE_PATH + filename);
+        BufferedImage image = ImageIO.read(file);
+        if (image == null) {
+            throw new IOException("(Error) Could not read image");
+        }
+        return image;
     }
 
-    public int luminanceToCharIndex(double Y) {
-        return (int) (ASCII.length * Y / 255);
-    }
-
-    public int charIndexToLuminance(int I) {
-        int Y = 255 / (ASCII.length - 1) * I;
-        int ARGB = 0xff000000;
-        // R << 16 | G << 8 | B
-        ARGB = (Y << 16) | (Y << 8) | Y;
-        return ARGB;
-    }
-
-    public void writeImage(String ASCIIFilename, String imageFilename, String imageFormat) {
-        File ascii = readASCIIFile(ASCIIFilename);
+    public void writeImage(String ASCIIFilename, String imageFilename) {
+        String imageFormat;
+        try {
+            imageFormat = imageFilename.split("\\.")[1];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new RuntimeException("(Error) Missing file extension");
+        }
+        File ascii = readASCII(ASCIIFilename);
         ArrayList<ArrayList<Integer>> ASCIIRowsConvertedToLuminance = new ArrayList<>();
         int height = 0;
         int width = 0;
@@ -93,7 +87,7 @@ public class Logic {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("(Error) Could not read ASCII");
         }
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < height; ++y) {
@@ -105,7 +99,22 @@ public class Logic {
         try {
             ImageIO.write(image, imageFormat, outputFile);
         } catch (IOException e) {
-            System.out.println(e.getMessage());
+            throw new RuntimeException("(Error) Could not write image");
         }
+    }
+
+    public double colorToLuminance(int R, int G, int B) {
+        // https://stackoverflow.com/a/596243, Rec. 709
+        return (0.2126 * R + 0.7152 * G + 0.0722 * B);
+    }
+
+    public int luminanceToCharIndex(double Y) {
+        return (int) (ASCII.length * Y / 255);
+    }
+
+    public int charIndexToLuminance(int I) {
+        int Y = 255 / (ASCII.length - 1) * I;
+        // R << 16 | G << 8 | B
+        return 0xff000000 | (Y << 16) | (Y << 8) | Y;
     }
 }
