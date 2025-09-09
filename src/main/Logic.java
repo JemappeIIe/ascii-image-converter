@@ -3,9 +3,7 @@ package main;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class Logic {
     public static final String ABSOLUTE_PROJECT_PATH = System.getProperty("user.dir");
@@ -27,18 +25,22 @@ public class Logic {
         this.userInterface = userInterface;
     }
 
-    public File readASCII(String filename) {
+    public File readASCIIFile(String filename) {
         return new File(ASCII_PATH + filename);
     }
 
-    public void writeASCII(BufferedImage image, String outputFileName) {
-        File file = new File(ASCII_PATH + outputFileName);
-        PrintWriter printWriter;
-        try {
-            printWriter = new PrintWriter(new FileWriter(file));
-        } catch (IOException e) {
-            throw new RuntimeException("(Error) Could not read ASCII");
+    public BufferedImage readImageFile(String filename) throws IOException {
+        File file = new File(IMAGE_PATH + filename);
+        BufferedImage image = ImageIO.read(file);
+        if (image == null) {
+            throw new IOException("(Error) File format is not supported");
         }
+        return image;
+    }
+
+    public void writeASCII(BufferedImage image, String outputFileName) throws IOException {
+        File file = new File(ASCII_PATH + outputFileName);
+        PrintWriter printWriter = new PrintWriter(new FileWriter(file));
         for (int y = 0; y < image.getHeight(); ++y) {
             StringBuilder row = new StringBuilder();
             for (int x = 0; x < image.getWidth(); ++x) {
@@ -54,23 +56,23 @@ public class Logic {
         printWriter.close();
     }
 
-    public BufferedImage readImage(String filename) throws IOException {
-        File file = new File(IMAGE_PATH + filename);
-        BufferedImage image = ImageIO.read(file);
-        if (image == null) {
-            throw new IOException("(Error) Could not read image");
-        }
-        return image;
+    public double colorToLuminance(int R, int G, int B) {
+        // https://stackoverflow.com/a/596243, Rec. 709
+        return (0.2126 * R + 0.7152 * G + 0.0722 * B);
     }
 
-    public void writeImage(String ASCIIFilename, String imageFilename) {
-        String imageFormat;
-        try {
-            imageFormat = imageFilename.split("\\.")[1];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new RuntimeException("(Error) Missing file extension");
-        }
-        File ascii = readASCII(ASCIIFilename);
+    public int luminanceToCharIndex(double Y) {
+        return (int) (ASCII.length * Y / 255);
+    }
+
+    public int charIndexToLuminance(int I) {
+        int Y = 255 / (ASCII.length - 1) * I;
+        // R << 16 | G << 8 | B
+        return 0xff000000 | (Y << 16) | (Y << 8) | Y;
+    }
+
+    public void writeImage(String ASCIIFilename, String imageFilename, String imageFormat) {
+        File ascii = readASCIIFile(ASCIIFilename);
         ArrayList<ArrayList<Integer>> ASCIIRowsConvertedToLuminance = new ArrayList<>();
         int height = 0;
         int width = 0;
@@ -87,7 +89,7 @@ public class Logic {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("(Error) Could not read ASCII");
+            throw new RuntimeException("(Error) No such ASCII file");
         }
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < height; ++y) {
@@ -99,22 +101,23 @@ public class Logic {
         try {
             ImageIO.write(image, imageFormat, outputFile);
         } catch (IOException e) {
-            throw new RuntimeException("(Error) Could not write image");
+            throw new RuntimeException();
         }
     }
 
-    public double colorToLuminance(int R, int G, int B) {
-        // https://stackoverflow.com/a/596243, Rec. 709
-        return (0.2126 * R + 0.7152 * G + 0.0722 * B);
+    public String[] getAllImages() throws Exception {
+        File imageDirectory = new File(IMAGE_PATH);
+        if (imageDirectory.isDirectory()) {
+            return imageDirectory.list();
+        }
+        throw new Exception("(Error) The image directory or path to it has been changed");
     }
 
-    public int luminanceToCharIndex(double Y) {
-        return (int) (ASCII.length * Y / 255);
-    }
-
-    public int charIndexToLuminance(int I) {
-        int Y = 255 / (ASCII.length - 1) * I;
-        // R << 16 | G << 8 | B
-        return 0xff000000 | (Y << 16) | (Y << 8) | Y;
+    public String[] getAllASCII() throws Exception {
+        File ASCIIDirectory = new File(ASCII_PATH);
+        if (ASCIIDirectory.isDirectory()) {
+            return ASCIIDirectory.list();
+        }
+        throw new Exception("(Error) The ASCII directory or path to it has been changed");
     }
 }
